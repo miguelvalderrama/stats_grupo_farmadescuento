@@ -2,7 +2,7 @@
 import streamlit as st
 from PIL import Image
 
-# Confit
+# Config
 st.set_page_config(page_title='Cross Chain Monitoring Tool', page_icon=':bar_chart:', layout='wide')
 
 # Title
