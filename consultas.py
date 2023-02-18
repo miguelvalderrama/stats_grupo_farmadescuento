@@ -207,11 +207,32 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             AND productos.codprod = compras.codprod    
                             AND s2.codprod = productos.codprod
                             AND (compras.cierre BETWEEN '{date_init}' AND '{date_end}')
-                            AND productos.desactivar = 0
-                        ORDER BY 'Util Ultimo Ingreso' DESC
-                        LIMIT 1500'''
+                            AND productos.desactivar = 0'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
+    elif query == 'estadisticas productos mas vendidos':
+        sql_query = f'''SELECT
+                            productos.codprod AS Codigo,
+                            productos.nombre AS Producto,
+                            productos.tipoproducto AS 'Area',
+                            ROUND(productos.stock) AS Stock,
+                            ROUND(SUM(facturas_dat.cantidad - facturas_dat.devolucion)) AS 'Unidades Vendidas',
+                            CASE
+                                WHEN facturas_dat.poriva > 0 THEN facturas_dat.precio*1.16
+                                WHEN facturas_dat.poriva <=0 THEN facturas_dat.precio
+                                ELSE 0
+                            END AS 'Precio Unitario Bs',
+                            ROUND(SUM(facturas_dat.totalmasiva), 2) AS 'Ventas Totales Bs'
+                        FROM
+                            facturas_dat,
+                            productos
+                        WHERE
+                            facturas_dat.codprod = productos.codprod
+                            AND (facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}')
+                            AND productos.codprod NOT IN(970199, 12073, 970200, 964342, 967837, 967954, 966749, 967836, 972997, 967954, 973040, 972213, 973065, 972726, 969437, 958192)
+                        GROUP BY facturas_dat.codprod, productos.codtipoproducto'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
+
     elif query == 'Conexiones':
         sql_query = f'''SELECT 
                             SUBSTRING_INDEX(nombre, ',', 1) AS nombre, grupo, servidor, puerto, nomusua, clave, nom_corto, basedata
