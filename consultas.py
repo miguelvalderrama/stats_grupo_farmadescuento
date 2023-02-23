@@ -4,7 +4,6 @@ import pandas as pd
 import mysql.connector
 
 # Data Sources
-# @st.cache_data(ttl=1000)
 def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1', user='jonas.salas', password='camaleon', database='hptal'):
     if query == 'estadisticas de ventas':
         sql_query = f'''SELECT
@@ -231,6 +230,56 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             AND (facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}')
                             AND productos.codprod NOT IN(970199, 12073, 970200, 964342, 967837, 967954, 966749, 967836, 972997, 967954, 973040, 972213, 973065, 972726, 969437, 958192)
                         GROUP BY facturas_dat.codprod, productos.codtipoproducto'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
+
+    elif query == 'estadisticas de asesor':
+        sql_query = f'''SELECT
+                            facturas_dat.fecha AS Fecha,
+                            COUNT(DISTINCT(facturas_dat.documento)) AS Clientes,
+                            ROUND(SUM(facturas_dat.cantidad - devolucion)) AS 'Unidades',
+                            ROUND(SUM(totalmasiva), 2) AS 'Ventas Bs',
+                            ROUND(SUM(totalmasiva / tasa_primera_actualizacion), 2) AS 'Ventas $',
+                            ROUND(SUM(totalmasiva / t1.cliente), 2) AS 'Ticket Promedio',
+                            ROUND(SUM((facturas_dat.cantidad - devolucion) / t1.cliente), 2) AS UPT,
+                            t1.usuario AS Usuario
+                        FROM
+                            facturas_dat,
+                            historial_dolar,
+                            productos,
+                            facturas,
+                            (SELECT facturas_dat.fecha, COUNT(DISTINCT(facturas_dat.documento)) AS cliente, facturas_dat.usuario, SUM(totalmasiva) AS ventas FROM facturas_dat, facturas WHERE (facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}') AND facturas.documento = facturas_dat.documento AND facturas.credito = 0 GROUP BY facturas_dat.fecha, facturas_dat.usuario) AS t1
+                        WHERE facturas_dat.fecha = historial_dolar.fecha
+                            AND productos.codprod = facturas_dat.codprod
+                            AND facturas_dat.fecha = t1.fecha
+                            AND facturas_dat.usuario = t1.usuario
+                            AND facturas_dat.documento = facturas.documento
+                            AND facturas.credito = 0
+                            AND productos.codprod NOT IN(969437, 967836,928905,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758)
+                        GROUP BY facturas_dat.fecha, t1.usuario'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
+    
+    elif query == 'estadisticas de devoluciones asesores':
+        sql_query = f'''SELECT
+                            facturas_dat.fecha AS Fecha,
+                            ROUND(SUM(devolucion)) AS 'Unidades Devueltas',
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*precio ELSE 0 END), 2), 0) AS 'Monto Devolucion Bs',
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva>0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS 'Monto Devolucion $',
+                            usuario AS Usuario
+                        FROM
+                            facturas_dat,
+                            historial_dolar
+                        WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
+                            AND facturas_dat.fecha = historial_dolar.fecha
+                        GROUP BY facturas_dat.fecha, usuario'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
+
+    elif query == 'Usuarios':
+        sql_query = f'''SELECT 
+                            nombre
+                        FROM 
+                            usuarios 
+                        WHERE 
+                            is_activo = 1'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
 
     elif query == 'Conexiones':

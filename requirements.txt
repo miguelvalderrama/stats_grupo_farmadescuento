@@ -1,4 +1,5 @@
 pandas
-plotly
+numpy
+altair
 streamlit
 mysql-connector-python==8.0.29

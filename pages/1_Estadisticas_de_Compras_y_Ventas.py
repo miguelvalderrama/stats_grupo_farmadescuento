@@ -12,10 +12,6 @@ if st.session_state.get("role") != "admin":
     st.error("No tienes permisos para acceder a esta pagina.")
     st.stop()
 
-# Global Variables
-theme_plotly = None # None or streamlit
-week_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
 # Config
 st.set_page_config(page_title='Estadistica Compras/Ventas', page_icon=':bar_chart:', layout='wide')
 
@@ -39,15 +35,14 @@ conexiones = conexiones[conexiones['grupo'] == 'SNFDO']
 farmacias = [nombre for nombre in conexiones['nombre']]
 
 c1, c2, c3, c4 = st.columns(4)
-
 with c1:
     date_init = st.date_input(
         "Desde:",
-        datetime.datetime.today())
+        datetime.date.today())
 with c2:
     date_end = st.date_input(
         "Hasta:",
-        datetime.datetime.today())
+        datetime.date.today())
 with c3:
     option = st.selectbox('Farmacia a consultar:', options=farmacias)
 farmacia = conexiones[conexiones['nombre'] == option].iloc[0]
