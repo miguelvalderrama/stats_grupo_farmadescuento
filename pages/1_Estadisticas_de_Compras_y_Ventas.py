@@ -136,11 +136,11 @@ with c1:
         s1, s2 = st.columns(2)
         with s1:
             st.metric(label='**Unidades Compradas Farmacia**', value=str("{:,.0f}".format(stats_compras.loc[stats_compras['Area']=='Farmacia', 'Unidades Ingresadas'].sum())))
-            st.metric(label='**Costo Totales Farmacia**', value=str("Bs. {:,.2f}".format(stats_compras.loc[stats_compras['Area']=='Farmacia', 'Costo Totales'].sum())))
+            st.metric(label='**Unidades Compradas MiniMarket**', value=str("{:,.0f}".format(stats_compras.loc[stats_compras['Area']=='Mini Market', 'Unidades Ingresadas'].sum())))
             st.metric(label='**Relacion Unidades Compradas Farmacia/MiniMarket**', value=str("{:,.2f}%".format(stats_compras.loc[stats_compras['Area']=='Farmacia', 'Unidades Ingresadas'].sum()/stats_compras.loc[stats_compras['Area']=='Mini Market', 'Unidades Ingresadas'].sum()*100)))
 
         with s2:
-            st.metric(label='**Unidades Compradas MiniMarket**', value=str("{:,.0f}".format(stats_compras.loc[stats_compras['Area']=='Mini Market', 'Unidades Ingresadas'].sum())))
+            st.metric(label='**Costo Totales Farmacia**', value=str("Bs. {:,.2f}".format(stats_compras.loc[stats_compras['Area']=='Farmacia', 'Costo Totales'].sum())))
             st.metric(label='**Costo Totales MiniMarket**', value=str("Bs. {:,.2f}".format(stats_compras.loc[stats_compras['Area']=='Mini Market', 'Costo Totales'].sum())))
             if stats_compras.loc[stats_compras['Area']=='Mini Market', 'Costo Totales'].sum() == 0:
                 st.metric(label='**Relacion Costos Farmacia/MiniMarket**', value=str("{:,.2f}%".format(0)))
@@ -174,11 +174,11 @@ with c2:
         s1, s2 = st.columns(2)
         with s1:
             st.metric(label='**Unidades Vendidas Farmacia**', value=str("{:,.0f}".format(stats_ventas.loc[stats_ventas['Area']=='Farmacia', 'Unidades Vendidas'].sum())))
-            st.metric(label='**Ventas Totales Farmacia**', value=str("Bs. {:,.2f}".format(stats_ventas.loc[stats_ventas['Area']=='Farmacia', 'Ventas Bs'].sum())))
+            st.metric(label='**Unidades Vendidas MiniMarket**', value=str("{:,.0f}".format(stats_ventas.loc[stats_ventas['Area']=='Mini Market', 'Unidades Vendidas'].sum())))
             st.metric(label='**Relacion Unidades Vendidas Farmacia/MiniMarket**', value=str("{:,.2f}%".format(stats_ventas.loc[stats_ventas['Area']=='Farmacia', 'Unidades Vendidas'].sum()/stats_ventas.loc[stats_ventas['Area']=='Mini Market', 'Unidades Vendidas'].sum()*100)))
         with s2:
-            st.metric(label='**Unidades Vendidas MiniMarket**', value=str("{:,.0f}".format(stats_ventas.loc[stats_ventas['Area']=='Mini Market', 'Unidades Vendidas'].sum())))
             st.metric(label='**Ventas Totales MiniMarket**', value=str("Bs. {:,.2f}".format(stats_ventas.loc[stats_ventas['Area']=='Mini Market', 'Ventas Bs'].sum())))
+            st.metric(label='**Ventas Totales Farmacia**', value=str("Bs. {:,.2f}".format(stats_ventas.loc[stats_ventas['Area']=='Farmacia', 'Ventas Bs'].sum())))
             st.metric(label='**Relacion Ventas Farmacia/MiniMarket**', value=str("{:,.2f}%".format(stats_ventas.loc[stats_ventas['Area']=='Farmacia', 'Ventas Bs'].sum()/stats_ventas.loc[stats_ventas['Area']=='Mini Market', 'Ventas Bs'].sum()*100)))
 
         chart_try = chart.get_chart(df, 'Compras y Ventas en Bs:', 'Bs', 'Monto Bs', 'Tipo')
@@ -194,7 +194,12 @@ with c1:
     df_lineas = stats_lineas.copy()
     df_lineas.drop(columns=['Fecha'], inplace=True)
     df_lineas = df_lineas.groupby(['Linea']).sum()
-    st.dataframe(df_lineas, height=490, use_container_width=True)
+    style_show = df_lineas.style.highlight_max(axis=0).format({
+        'Unidades': '{:,.0f}'.format, 
+        'Ventas Bs': '{:,.2f}'.format, 
+        'Ventas $': '{:,.2f}'.format,
+    })
+    st.dataframe(style_show, height=490, use_container_width=True)
 with c2:
     st.write('**Ventas:**')
     df_lineas = df_lineas.reset_index()
@@ -227,7 +232,15 @@ if option != 'FARMA HOSPITAL':
 c1, c2  = st.columns(2)
 with c1:
     st.write('**Detallado Diario:**')
-    st.dataframe(stats_areas, use_container_width=True)
+    style_show = stats_areas.style.highlight_max(subset=['Clientes', 'Unidades', 'Ventas Bs', 'Ventas $', 'Ticket Promedio', 'UPT'],axis=0).format({
+        'Clientes': '{:,.0f}'.format, 
+        'Unidades': '{:,.0f}'.format, 
+        'Ventas Bs': '{:,.2f}'.format, 
+        'Ventas $': '{:,.2f}'.format, 
+        'Ticket Promedio': '{:,.2f}'.format, 
+        'UPT': '{:,.2f}'.format,
+    })
+    st.dataframe(style_show, use_container_width=True)
 with c2:
     st.write('**Totales Por Area:**')
     stats_areas['Fecha'] = pd.to_datetime(stats_areas['Fecha'])
@@ -236,15 +249,52 @@ with c2:
     mean_stats_area = stats_areas.groupby(['Areas']).mean()
     mean_stats_area['Clientes'] = mean_stats_area['Clientes'].astype(int)
     mean_stats_area['Unidades'] = mean_stats_area['Unidades'].astype(int)
+    mean_totals = mean_stats_area.sum()
 
     stats_areas = stats_areas.reset_index()
     df_areas = stats_areas.copy()
     df_areas.drop(columns=['Fecha', 'UPT', 'Ticket Promedio'], inplace=True)
     df_areas = df_areas.groupby(['Areas']).sum()
 
+    total = df_areas.sum()
+    df_areas['c%'] = (df_areas['Clientes']/total['Clientes'])*100
+    df_areas['u%'] = (df_areas['Unidades']/total['Unidades'])*100
+    df_areas['v%'] = (df_areas['Ventas Bs']/total['Ventas Bs'])*100
+    cols = ['Clientes', 'c%', 'Unidades', 'u%', 'Ventas Bs', 'Ventas $', 'v%']
+    df_areas = df_areas[cols]
+
+    df_areas = df_areas.style.format({
+    'Clientes': '{:,.0f}'.format, 
+    'c%': '{:,.2f}%'.format, 
+    'Unidades': '{:,.0f}'.format, 
+    'u%': '{:,.2f}%'.format, 
+    'Ventas Bs': '{:,.2f}'.format, 
+    'Ventas $': '{:,.2f}'.format, 
+    'v%': '{:,.2f}%'.format
+    })
+    df_areas.highlight_max(axis=0)
     st.dataframe(df_areas)
+
     st.write('**Promedios Por Areas:**')
-    st.dataframe(mean_stats_area.round(2))
+
+    mean_stats_area['c%'] = (mean_stats_area['Clientes']/mean_totals['Clientes'])*100
+    mean_stats_area['u%'] = (mean_stats_area['Unidades']/mean_totals['Unidades'])*100
+    mean_stats_area['v%'] = (mean_stats_area['Ventas Bs']/mean_totals['Ventas Bs'])*100
+    cols = ['Clientes', 'c%', 'Unidades', 'u%', 'Ventas Bs', 'Ventas $', 'v%', 'Ticket Promedio', 'UPT']
+    mean_stats_area = mean_stats_area[cols]
+    mean_stats_area = mean_stats_area.style.format({
+    'Clientes': '{:,.0f}'.format, 
+    'c%': '{:,.2f}%'.format, 
+    'Unidades': '{:,.0f}'.format, 
+    'u%': '{:,.2f}%'.format, 
+    'Ventas Bs': '{:,.2f}'.format, 
+    'Ventas $': '{:,.2f}'.format, 
+    'v%': '{:,.2f}%'.format,
+    'Ticket Promedio': '{:,.2f}'.format,
+    'UPT': '{:,.2f}'.format,
+    })
+    mean_stats_area.highlight_max(axis=0)
+    st.dataframe(mean_stats_area)
 
 if (date_end - date_init) > datetime.timedelta(days=0):
     chart_ventas_areas = chart.get_chart(stats_areas, 'Ventas Por Area Bs', 'Ventas Bs', 'Monto Bs', 'Areas')
@@ -264,5 +314,3 @@ if (date_end - date_init) > datetime.timedelta(days=0):
     with c2:
         chart_ventas_areas = chart.get_chart(stats_areas, 'UPT Por Area', 'UPT', 'UPT', 'Areas')
         st.altair_chart(chart_ventas_areas, use_container_width=True)
-
-

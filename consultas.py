@@ -191,21 +191,22 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             productos.nombre AS Producto,
                             productos.tipoproducto AS Tipo,
                             ROUND(productos.stock) AS Stock,
-                            ROUND(s2.cant) 'Cantidad Vendida',
-                            ROUND(compras.costo,2) 'Costo Ingreso',
+                            ROUND(f1.cant) AS 'Cantidad Vendida',
+                            ROUND(compras.costo,2) AS 'Costo Ingreso',
                             ROUND(((productos.precio - compras.costo)/compras.costo)*100,2) AS 'Util Ultimo Ingreso',
-                            ROUND(productos.costo,2) 'Costo Actual',
+                            ROUND(productos.costo,2) AS 'Costo Actual',
                             ROUND(((productos.precio - productos.costo)/productos.costo)*100,2) AS 'Util Costo Actual'    
                         FROM
                             compras,
                             productos,
-                            (SELECT MAX(keycodigo) keycodigo, codprod FROM compras WHERE (cierre BETWEEN '{date_init}' AND '{date_end}') GROUP BY codprod) s1,
-                            (SELECT facturas_dat.codprod codprod, SUM(facturas_dat.cantidad - facturas_dat.devolucion) cant FROM facturas_dat, productos WHERE facturas_dat.codprod = productos.codprod AND (facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}') GROUP BY facturas_dat.codprod) s2
+                            (SELECT MAX(keycodigo) keycodigo, codprod FROM compras GROUP BY codprod) s1,
+                            (SELECT s2.codprod, SUM(s2.cant) cant FROM (SELECT facturas_dat.fecha fecha, facturas_dat.codprod codprod, SUM(facturas_dat.cantidad - facturas_dat.devolucion) cant FROM facturas_dat, productos WHERE facturas_dat.codprod = productos.codprod AND facturas_dat.fecha >= '2022-09-01' AND facturas_dat.fecha < CURDATE() GROUP BY facturas_dat.fecha, facturas_dat.codprod) AS s2 GROUP BY s2.codprod) AS f1
                         WHERE
                             compras.keycodigo = s1.keycodigo
                             AND productos.codprod = compras.codprod    
-                            AND s2.codprod = productos.codprod
-                            AND (compras.cierre BETWEEN '{date_init}' AND '{date_end}')
+                            AND f1.codprod = productos.codprod
+                            AND compras.cierre >= '2022-09-01'
+                            AND compras.cierre < CURDATE()
                             AND productos.desactivar = 0'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
