@@ -264,14 +264,17 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             facturas_dat.fecha AS Fecha,
                             ROUND(SUM(devolucion)) AS 'Unidades Devueltas',
                             IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*precio ELSE 0 END), 2), 0) AS 'Monto Devolucion Bs',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva>0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS 'Monto Devolucion $',
-                            usuario AS Usuario
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS 'Monto Devolucion $',
+                            facturas_dat.usuario AS Usuario
                         FROM
                             facturas_dat,
+                            facturas,
                             historial_dolar
                         WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
                             AND facturas_dat.fecha = historial_dolar.fecha
-                        GROUP BY facturas_dat.fecha, usuario'''
+                            AND facturas_dat.documento = facturas.documento
+                            AND facturas.credito = 0
+                        GROUP BY facturas_dat.fecha, facturas_dat.usuario'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
 
     elif query == 'Usuarios':
