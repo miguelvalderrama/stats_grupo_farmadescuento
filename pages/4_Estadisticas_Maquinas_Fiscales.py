@@ -1,15 +1,12 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import consultas
-import datetime
 
 if st.session_state.get("role") != "admin":
     st.error("No tienes permisos para acceder a esta pagina.")
     st.stop()
 
 # Config
-st.set_page_config(page_title='Estadistica Asesores', page_icon=':bar_chart:', layout='wide')
+st.set_page_config(page_title='Estadistica Maquinas Fiscales', page_icon=':bar_chart:', layout='wide')
 
 hide_img_fs = '''
 <style>
@@ -47,15 +44,70 @@ if date_init > date_end:
     st.stop()
 
 # Data Sources
-stats_maquinas = consultas.get_data('estadisticas de maquinas fiscales', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
-# stats_maquinas= stats_maquinas.style.format({
-#     'Util Ultimo Ingreso': '{:,.2f}%'.format,
-#     'Util Costo Actual': '{:,.2f}%'.format,
-#     'Costo Ingreso': '{:,.2f}'.format,
-#     'Costo Actual': '{:,.2f}'.format,
-# })
+stats_maquinas_sistema = consultas.get_data('estadisticas de maquinas fiscales sistema', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
+stats_maquinas_zetas = consultas.get_data('estadisticas de maquinas fiscales zetas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 
+if stats_maquinas_sistema is None or stats_maquinas_zetas is None:
+    st.error('No hay informacion suficiente, seleccione un rango mayor de fechas')
+    st.stop()
+
+maquinas_fiscales = stats_maquinas_sistema.copy()
+maquinas_fiscales = maquinas_fiscales.drop(columns=['Tickera'])
+maquinas_fiscales = maquinas_fiscales[maquinas_fiscales['Fiscalserial'] != 'NENTREGA']
+
+st.subheader('Maquinas Fiscales')
+c1, c2 = st.columns(2)
+with c1:
+    st.write('**Monto Maquinas Fiscales en Sistema:**')
+    st.dataframe(maquinas_fiscales, use_container_width=True, height=352)
+    
+with c2:
+    st.write('**Monto Maquinas Fiscales en Zetas:**')
+    st.dataframe(stats_maquinas_zetas, use_container_width=True, height=352)
 
 c1, c2 = st.columns(2)
 with c1:
-    st.dataframe(stats_maquinas, use_container_width=True)
+    s1, s2 = st.columns(2)
+    with s1:
+        st.write('**Total Maquinas Fiscales en Sistema:**')
+        avg = maquinas_fiscales.drop(columns=['Fecha'])
+        avg = avg.groupby('Fiscalserial').sum()
+        st.dataframe(avg, use_container_width=True)
+    with s2:
+        st.write(' ')
+        st.write(' ')
+        st.write(' ')
+        st.write(' ')
+        st.write(' ')
+        st.metric(label='Total Maquinas Fiscales en Sistema', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].sum()))
+        st.metric(label='Promedio Maquinas Fiscales en Sistema', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].mean()))
+with c2:
+    s1, s2 = st.columns(2)
+    with s1:
+        st.write('**Total Maquinas Fiscales en Zetas:**')
+        avg = stats_maquinas_zetas.drop(columns=['Fecha'])
+        avg = avg.groupby('Fiscalserial').sum()
+        st.dataframe(avg, use_container_width=True)
+    with s2:
+        st.write(' ')
+        st.write(' ')
+        st.write(' ')
+        st.write(' ')
+        st.write(' ')
+        st.metric(label='Total Maquinas Fiscales en Zeta', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].sum()))
+        st.metric(label='Promedio Maquinas Fiscales en Zeta', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].mean()))
+
+st.subheader('Tickeras')
+tickeras = stats_maquinas_sistema.copy()
+tickeras = tickeras.drop(columns=['Maquina Fiscal'])
+tickeras = tickeras[tickeras['Fiscalserial'] == 'NENTREGA'].reset_index(drop=True)
+if tickeras.empty:
+    st.error('No hay tickeras en esta tienda')
+    st.stop()
+c1, c2 = st.columns(2)
+with c1:
+    st.dataframe(tickeras, use_container_width=True)
+with c2:
+    st.metric(label='Total Monto Tickera', value="Bs. {:,.2f}".format(tickeras['Tickera'].sum()))
+    st.metric(label='Promedio Diario Tickera', value="Bs. {:,.2f}".format(tickeras['Tickera'].mean()))
+

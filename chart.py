@@ -21,7 +21,7 @@ def get_chart(data, title, y, tooltip_y, group, promed=False, mean=None):
     )
 
     if promed:
-        rule = alt.Chart(data).mark_rule(color='blue').encode(
+        rule = alt.Chart(data).mark_rule(color='orange').encode(
         y=mean,
         strokeWidth=alt.value(3))
 

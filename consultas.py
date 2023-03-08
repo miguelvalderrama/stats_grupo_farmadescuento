@@ -277,16 +277,26 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                         GROUP BY facturas_dat.fecha, facturas_dat.usuario'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
-    elif query == 'estadisticas de maquinas fiscales':
+    elif query == 'estadisticas de maquinas fiscales sistema':
         sql_query = f'''SELECT
                             Fecha,
                             SUM(CASE WHEN fiscalserial = 'NENTREGA' THEN 0 ELSE (debitos-creditos) END) AS 'Maquina Fiscal',
-                            SUM(CASE WHEN fiscalserial = 'NENTREGA' THEN (debitos-creditos) ELSE 0 END) AS Tickera
+                            SUM(CASE WHEN fiscalserial = 'NENTREGA' THEN (debitos-creditos) ELSE 0 END) AS Tickera,
+                            Fiscalserial
                         FROM
-                            facturas
-                        WHERE fecha BETWEEN '2023-02-15' AND '2023-03-08'
-                            AND credito = 0
-                        GROUP BY fecha'''
+                        facturas
+                        WHERE facturas.fecha BETWEEN '{date_init}' AND '{date_end}'
+                        GROUP BY facturas.fecha, facturas.fiscalserial'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
+    
+    elif query == 'estadisticas de maquinas fiscales zetas':
+        sql_query = f'''SELECT 
+                            Fecha, 
+                            SUM(total_ventas+total_impuesto_en_ventas-total_nota_de_credito-total_impuesto_en_nota_de_credito) AS 'Maquina Fiscal',
+                            Fiscalserial
+                        FROM reporte_zeta 
+                        WHERE fecha BETWEEN '{date_init}' AND '{date_end}'
+                        GROUP BY fiscalserial'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
     elif query == 'estadisticas monto real divisas':
