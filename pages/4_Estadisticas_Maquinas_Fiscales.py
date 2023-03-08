@@ -58,18 +58,18 @@ maquinas_fiscales = maquinas_fiscales[maquinas_fiscales['Fiscalserial'] != 'NENT
 st.subheader('Maquinas Fiscales')
 c1, c2 = st.columns(2)
 with c1:
-    st.write('**Monto Maquinas Fiscales en Sistema:**')
-    st.dataframe(maquinas_fiscales, use_container_width=True, height=352)
+    st.write('**Monto Ventas en Sistema:**')
+    st.dataframe(maquinas_fiscales, use_container_width=True)
     
 with c2:
-    st.write('**Monto Maquinas Fiscales en Zetas:**')
-    st.dataframe(stats_maquinas_zetas, use_container_width=True, height=352)
+    st.write('**Monto Ventas en Zetas:**')
+    st.dataframe(stats_maquinas_zetas, use_container_width=True)
 
 c1, c2 = st.columns(2)
 with c1:
     s1, s2 = st.columns(2)
     with s1:
-        st.write('**Total Maquinas Fiscales en Sistema:**')
+        st.write('**Totales Ventas en Sistema:**')
         avg = maquinas_fiscales.drop(columns=['Fecha'])
         avg = avg.groupby('Fiscalserial').sum()
         st.dataframe(avg, use_container_width=True)
@@ -79,12 +79,12 @@ with c1:
         st.write(' ')
         st.write(' ')
         st.write(' ')
-        st.metric(label='Total Maquinas Fiscales en Sistema', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].sum()))
+        st.metric(label='Total Ventas en Sistema', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].sum()))
         st.metric(label='Promedio Maquinas Fiscales en Sistema', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].mean()))
 with c2:
     s1, s2 = st.columns(2)
     with s1:
-        st.write('**Total Maquinas Fiscales en Zetas:**')
+        st.write('**Totale Ventas en Zetas:**')
         avg = stats_maquinas_zetas.drop(columns=['Fecha'])
         avg = avg.groupby('Fiscalserial').sum()
         st.dataframe(avg, use_container_width=True)
@@ -94,7 +94,7 @@ with c2:
         st.write(' ')
         st.write(' ')
         st.write(' ')
-        st.metric(label='Total Maquinas Fiscales en Zeta', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].sum()))
+        st.metric(label='Total Ventas en Zeta', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].sum()))
         st.metric(label='Promedio Maquinas Fiscales en Zeta', value="Bs. {:,.2f}".format(avg['Maquina Fiscal'].mean()))
 
 st.subheader('Tickeras')

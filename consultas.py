@@ -296,7 +296,7 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             Fiscalserial
                         FROM reporte_zeta 
                         WHERE fecha BETWEEN '{date_init}' AND '{date_end}'
-                        GROUP BY fiscalserial'''
+                        GROUP BY fecha, fiscalserial'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
     elif query == 'estadisticas monto real divisas':
