@@ -276,6 +276,29 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             AND facturas.credito = 0
                         GROUP BY facturas_dat.fecha, facturas_dat.usuario'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
+    
+    elif query == 'estadisticas de maquinas fiscales':
+        sql_query = f'''SELECT
+                            Fecha,
+                            SUM(CASE WHEN fiscalserial = 'NENTREGA' THEN 0 ELSE (debitos-creditos) END) AS 'Maquina Fiscal',
+                            SUM(CASE WHEN fiscalserial = 'NENTREGA' THEN (debitos-creditos) ELSE 0 END) AS Tickera
+                        FROM
+                            facturas
+                        WHERE fecha BETWEEN '2023-02-15' AND '2023-03-08'
+                            AND credito = 0
+                        GROUP BY fecha'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
+    
+    elif query == 'estadisticas monto real divisas':
+        sql_query = f'''SELECT 
+                            Fecha, 
+                            SUM(monto_moneda) AS 'Monto Divisa'
+                            FROM mov_pagos 
+                        WHERE fecha BETWEEN '{date_init}' AND '{date_end}' 
+                        AND tipo = 'EFECTIVO' 
+                        AND codtipomoneda = 3 
+                        GROUP BY fecha'''
+        return transform_query_to_pd_df(sql_query, host, user, password, database)
 
     elif query == 'Usuarios':
         sql_query = f'''SELECT 

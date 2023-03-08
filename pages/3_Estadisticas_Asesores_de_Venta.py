@@ -108,20 +108,20 @@ with c2:
     st.dataframe(mean_stats_asesores.round(2), use_container_width=True)
 
 if (date_end - date_init) > datetime.timedelta(days=0) and len(stats_asesores['Usuario'].unique()) <= 10 and len(stats_asesores) > 0:
-    chart_ventas_usuario = chart.get_chart(stats_asesores, 'Ventas Por Area Usuario', 'Ventas Bs', 'Monto Bs', 'Usuario')
+    chart_ventas_usuario = chart.get_chart(stats_asesores, 'Ventas Por Area Usuario', 'Ventas Bs', 'Monto Bs', 'Usuario', True, 'mean(Ventas Bs)')
     st.altair_chart(chart_ventas_usuario, use_container_width=True)
     c1, c2 = st.columns(2)
     with c1:
-        chart_ventas_usuario = chart.get_chart(stats_asesores, 'Clientes Por Usuario', 'Clientes', 'Clientes', 'Usuario')
+        chart_ventas_usuario = chart.get_chart(stats_asesores, 'Clientes Por Usuario', 'Clientes', 'Clientes', 'Usuario', True, 'mean(Clientes)')
         st.altair_chart(chart_ventas_usuario, use_container_width=True)
     with c2:
-        chart_ventas_usuario = chart.get_chart(stats_asesores, 'Unidades Por Usuario', 'Unidades', 'Unidades', 'Usuario')
+        chart_ventas_usuario = chart.get_chart(stats_asesores, 'Unidades Por Usuario', 'Unidades', 'Unidades', 'Usuario', True, 'mean(Unidades)')
         st.altair_chart(chart_ventas_usuario, use_container_width=True)
 
     c1, c2 = st.columns(2)
     with c1:
-        chart_ventas_usuario = chart.get_chart(stats_asesores, 'Ticket Promedio Por Usuario', 'Ticket Promedio', 'Promedio', 'Usuario')
+        chart_ventas_usuario = chart.get_chart(stats_asesores, 'Ticket Promedio Por Usuario', 'Ticket Promedio', 'Promedio', 'Usuario', True, 'mean(Ticket Promedio)')
         st.altair_chart(chart_ventas_usuario, use_container_width=True)
     with c2:
-        chart_ventas_usuario = chart.get_chart(stats_asesores, 'UPT Por Usuario', 'UPT', 'UPT', 'Usuario')
+        chart_ventas_usuario = chart.get_chart(stats_asesores, 'UPT Por Usuario', 'UPT', 'UPT', 'Usuario', True, 'mean(UPT)')
         st.altair_chart(chart_ventas_usuario, use_container_width=True)

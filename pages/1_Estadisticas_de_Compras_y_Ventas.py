@@ -56,6 +56,7 @@ stats_ventas = consultas.get_data('estadisticas de ventas', date_init, date_end,
 stats_compras = consultas.get_data('estadisticas de compras', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 stats_areas = consultas.get_data('estadisticas por areas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 stats_lineas = consultas.get_data('estadisticas por lineas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
+stats_monto_divisas = consultas.get_data('estadisticas monto real divisas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 
 if stats_compras is None:
     stats_compras = pd.DataFrame(columns=['Fecha', 'Area', 'Unidades Ingresadas', 'pUnidades', 'Costo Totales', 'pCompras', 'Tasa Promedio', 'Costo Totales $'])
@@ -105,18 +106,24 @@ with c3:
 
 c1, c2 = st.columns(2)
 with c1:
+    st.metric(label='**Monto Divisas Real $**', value=str("{:,.0f}".format(stats_monto_divisas['Monto Divisa'].sum())))
     st.metric(label='**Clientes Totales**', value=str("{:,.0f}".format(stats_areas['Clientes'].sum())))
 with c2:
+    st.metric(label='**Promedio Monto Divisas Real $**', value=str("{:,.0f}".format(stats_monto_divisas['Monto Divisa'].mean())))
     st.metric(label='**Promedio Clientes Diarios**', value=str("{:,.0f}".format(stats_areas['Clientes'].mean()*len(stats_areas['Areas'].unique()))))
 
 stats_ventas['Unidades Vendidas'] = stats_ventas['Unidades Vendidas'].astype(int)
 stats_compras['Unidades Ingresadas'] = stats_compras['Unidades Ingresadas'].astype(int)
 
+st.subheader('Detallado Divisas Recibidas Diarias')
+c1, c2, c3 = st.columns(3)
+with c2:
+    st.dataframe(stats_monto_divisas, use_container_width=True)
 st.subheader('Compra/Venta Detallado Por Dia')
 c1, c2 = st.columns(2)
 with c1:
     st.write('**Compras Detalladas:**')
-    st.dataframe(stats_compras)
+    st.dataframe(stats_compras, use_container_width=True)
     if (date_end - date_init) > datetime.timedelta(days=0):
         df_ventas = stats_ventas[['Fecha', 'Unidades Vendidas']].copy()
         df_ventas['Fecha'] = pd.to_datetime(df_ventas['Fecha'])
