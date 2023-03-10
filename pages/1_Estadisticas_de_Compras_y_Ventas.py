@@ -31,7 +31,7 @@ with open('style.css')as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html = True)
 
 conexiones = consultas.get_data('Conexiones')
-conexiones = conexiones[conexiones['grupo'] == 'SNFDO']
+conexiones = conexiones[conexiones['grupo'] != 'OTROS']
 farmacias = [nombre for nombre in conexiones['nombre']]
 
 c1, c2, c3, c4 = st.columns(4)
@@ -51,12 +51,17 @@ if date_init > date_end:
     st.error('La fecha inicial debe ser menor que la final.')
     st.stop()
 
+if farmacia['grupo'] == 'SNFDO':
+    codtipomoneda = 3
+elif farmacia['grupo'] == 'CBZO':
+    codtipomoneda = 5
+
 # Data Sources
 stats_ventas = consultas.get_data('estadisticas de ventas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 stats_compras = consultas.get_data('estadisticas de compras', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 stats_areas = consultas.get_data('estadisticas por areas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
 stats_lineas = consultas.get_data('estadisticas por lineas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
-stats_monto_divisas = consultas.get_data('estadisticas monto real divisas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
+stats_monto_divisas = consultas.get_data('estadisticas monto real divisas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'], codtipomoneda)
 
 if stats_compras is None:
     stats_compras = pd.DataFrame(columns=['Fecha', 'Area', 'Unidades Ingresadas', 'pUnidades', 'Costo Totales', 'pCompras', 'Tasa Promedio', 'Costo Totales $'])
@@ -64,22 +69,6 @@ if stats_compras is None:
 if stats_ventas is None:
     st.error('No hay informacion que mostrar. Pruebe con otro rango de fechas.')
     st.stop()
-
-stats_devoluciones_tipo = consultas.get_data('estadisticas de devoluciones tipo', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
-stats_devoluciones_areas = consultas.get_data('estadisticas de devoluciones areas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
-stats_devoluciones_lineas = consultas.get_data('estadisticas de devoluciones lineas', date_init, date_end, farmacia['servidor'], farmacia['nomusua'], farmacia['clave'], farmacia['basedata'])
-
-stats_ventas['Ventas Bs'] = np.where((stats_ventas['Fecha']==stats_devoluciones_tipo['Fecha']) & (stats_ventas['Area']==stats_devoluciones_tipo['Areas']), stats_ventas['Ventas Bs'] - stats_devoluciones_tipo['Monto Devolucion Bs'], stats_ventas['Ventas Bs'])
-stats_ventas['Ventas $'] = np.where((stats_ventas['Fecha']==stats_devoluciones_tipo['Fecha']) & (stats_ventas['Area']==stats_devoluciones_tipo['Areas']), stats_ventas['Ventas $'] - stats_devoluciones_tipo['Monto Devolucion $'], stats_ventas['Ventas $'])
-stats_ventas['Unidades Vendidas'] = np.where((stats_ventas['Fecha']==stats_devoluciones_tipo['Fecha']) & (stats_ventas['Area']==stats_devoluciones_tipo['Areas']), stats_ventas['Unidades Vendidas'] - stats_devoluciones_tipo['Unidades Devueltas'], stats_ventas['Unidades Vendidas'])
-
-stats_areas['Ventas Bs'] = np.where((stats_areas['Fecha']==stats_devoluciones_areas['Fecha']) & (stats_areas['Areas']==stats_devoluciones_areas['Areas']), stats_areas['Ventas Bs'] - stats_devoluciones_areas['Monto Devolucion Bs'], stats_areas['Ventas Bs'])
-stats_areas['Ventas $'] = np.where((stats_areas['Fecha']==stats_devoluciones_areas['Fecha']) & (stats_areas['Areas']==stats_devoluciones_areas['Areas']), stats_areas['Ventas $'] - stats_devoluciones_areas['Monto Devolucion $'], stats_areas['Ventas $'])
-stats_areas['Unidades'] = np.where((stats_areas['Fecha']==stats_devoluciones_areas['Fecha']) & (stats_areas['Areas']==stats_devoluciones_areas['Areas']), stats_areas['Unidades'] - stats_devoluciones_areas['Unidades Devueltas'], stats_areas['Unidades'])
-
-stats_lineas['Ventas Bs'] =  np.where((stats_lineas['Fecha']==stats_devoluciones_lineas['Fecha']) & (stats_lineas['Linea']==stats_devoluciones_lineas['Linea']), stats_lineas['Ventas Bs'] - stats_devoluciones_lineas['Monto Devolucion Bs'], stats_lineas['Ventas Bs'])
-stats_lineas['Ventas $'] =  np.where((stats_lineas['Fecha']==stats_devoluciones_lineas['Fecha']) & (stats_lineas['Linea']==stats_devoluciones_lineas['Linea']), stats_lineas['Ventas $'] - stats_devoluciones_lineas['Monto Devolucion $'], stats_lineas['Ventas $'])
-stats_lineas['Unidades'] =  np.where((stats_lineas['Fecha']==stats_devoluciones_lineas['Fecha']) & (stats_lineas['Linea']==stats_devoluciones_lineas['Linea']), stats_lineas['Unidades'] - stats_devoluciones_lineas['Unidades Devueltas'], stats_lineas['Unidades'])
 
 st.subheader('Vista general')
 c1, c2, c3, c4 = st.columns(4)
@@ -106,10 +95,10 @@ with c3:
 
 c1, c2 = st.columns(2)
 with c1:
-    st.metric(label='**Monto Divisas Real $**', value=str("{:,.0f}".format(stats_monto_divisas['Monto Divisa'].sum())))
+    st.metric(label='**Monto Divisas Recibidas $**', value=str("{:,.0f}".format(stats_monto_divisas['Monto Divisa'].sum())))
     st.metric(label='**Clientes Totales**', value=str("{:,.0f}".format(stats_areas['Clientes'].sum())))
 with c2:
-    st.metric(label='**Promedio Monto Divisas Real $**', value=str("{:,.0f}".format(stats_monto_divisas['Monto Divisa'].mean())))
+    st.metric(label='**Promedio Monto Divisas Recibidas $**', value=str("{:,.0f}".format(stats_monto_divisas['Monto Divisa'].mean())))
     st.metric(label='**Promedio Clientes Diarios**', value=str("{:,.0f}".format(stats_areas['Clientes'].mean()*len(stats_areas['Areas'].unique()))))
 
 stats_ventas['Unidades Vendidas'] = stats_ventas['Unidades Vendidas'].astype(int)
@@ -197,7 +186,7 @@ with c1:
     st.write('**Detallado:**')
     stats_lineas['Unidades'] = stats_lineas['Unidades'].astype(int)
     stats_lineas['Ventas Bs'] = stats_lineas['Ventas Bs'].astype(float)
-    stats_lineas['Ventas $'] = stats_lineas['Ventas Bs'].astype(float)
+    stats_lineas['Ventas $'] = stats_lineas['Ventas $'].astype(float)
     df_lineas = stats_lineas.copy()
     df_lineas.drop(columns=['Fecha'], inplace=True)
     df_lineas = df_lineas.groupby(['Linea']).sum()

@@ -4,64 +4,91 @@ import pandas as pd
 import mysql.connector
 
 # Data Sources
-def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1', user='jonas.salas', password='camaleon', database='hptal'):
+def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1', user='jonas.salas', password='camaleon', database='hptal', codtipomoneda=None):
     if query == 'estadisticas de ventas':
         sql_query = f'''SELECT
-                            facturas_dat.fecha AS Fecha,
-                            productos.tipoproducto AS Area,
-                            COUNT(DISTINCT(facturas_dat.documento)) AS Clientes,
-                            ROUND(SUM(facturas_dat.cantidad - devolucion)) AS 'Unidades Vendidas',
-                            CONCAT(ROUND((((SUM(facturas_dat.cantidad - facturas_dat.devolucion))*100)/t3.cantidad), 2), '%') 'pUnidades',
-                            ROUND(SUM(totalmasiva), 2) AS 'Ventas Bs',
-                            ROUND(SUM(totalmasiva / tasa_primera_actualizacion), 2) AS 'Ventas $',
-                            CONCAT(ROUND((((SUM(facturas_dat.totalmasiva))*100)/t2.ventas), 2), '%') 'pVentas',  
-                            ROUND(SUM(totalmasiva / t1.cliente), 2) AS 'Ticket Promedio',
-                            ROUND(SUM((facturas_dat.cantidad - devolucion) / t1.cliente), 2) AS UPT
+                            temp.Fecha,
+                            temp.Area,
+                            CASE WHEN ISNULL(temp2.clientes) THEN temp.clientes ELSE (temp.Clientes-temp2.clientes) END AS Clientes,
+                            CASE WHEN ISNULL(temp2.Unidades_Devueltas) THEN temp.Unidades_Vendidas ELSE (temp.Unidades_Vendidas-temp2.Unidades_Devueltas) END AS 'Unidades Vendidas',
+                            temp.pUnidades,
+                            CASE WHEN ISNULL(temp2.devolucion_bs) THEN temp.Ventas_bs ELSE (temp.Ventas_Bs-temp2.Devolucion_Bs) END AS 'Ventas Bs',
+                            CASE WHEN ISNULL(temp2.devolucion_$) THEN temp.Ventas_$ ELSE (temp.Ventas_$-temp2.Devolucion_$) END AS 'Ventas $',
+                            temp.Ticket_Promedio AS 'Ticket Promedio',
+                            temp.UPT
                         FROM
-                            facturas_dat,
-                            productos,
-                            facturas,
-                            historial_dolar,
-                            (SELECT facturas_dat.fecha, 
+                            (SELECT
+                                facturas_dat.fecha AS Fecha,
+                                productos.tipoproducto AS AREA,
+                                COUNT(DISTINCT(facturas_dat.documento)) AS Clientes,
+                                ROUND(SUM(facturas_dat.cantidad - devolucion)) AS Unidades_Vendidas,
+                                CONCAT(ROUND((((SUM(facturas_dat.cantidad - facturas_dat.devolucion))*100)/t3.cantidad), 2), '%') 'pUnidades',
+                                ROUND(SUM(totalmasiva), 2) AS Ventas_Bs,
+                                ROUND(SUM(totalmasiva / tasa_primera_actualizacion), 2) AS Ventas_$,
+                                CONCAT(ROUND((((SUM(facturas_dat.totalmasiva))*100)/t2.ventas), 2), '%') 'pVentas',
+                                ROUND(SUM(totalmasiva / t1.cliente), 2) AS Ticket_Promedio,
+                                ROUND(SUM((facturas_dat.cantidad - devolucion) / t1.cliente), 2) AS UPT
+                            FROM
+                                facturas_dat,
+                                productos,
+                                facturas,
+                                historial_dolar,
+                                (SELECT facturas_dat.fecha, 
                                 COUNT(DISTINCT(facturas_dat.documento)) AS cliente
-                            FROM facturas_dat, 
+                                FROM facturas_dat, 
                                 facturas
-                            WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}' 
+                                WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}' 
                                 AND facturas.documento = facturas_dat.documento 
                                 AND facturas.credito = 0 
-                            GROUP BY facturas_dat.fecha) AS t1,
-                            (SELECT facturas_dat.fecha, 
+                                GROUP BY facturas_dat.fecha) AS t1,
+                                (SELECT facturas_dat.fecha, 
                                 SUM(facturas_dat.totalmasiva) AS ventas
-                            FROM productos, 
+                                FROM productos, 
                                 facturas, 
                                 facturas_dat 
-                            WHERE facturas.documento = facturas_dat.documento 
+                                WHERE facturas.documento = facturas_dat.documento 
                                 AND facturas.credito = 0 
                                 AND productos.codprod = facturas_dat.codprod 
                                 AND (facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}') 
                                 AND productos.codprod NOT IN(969437, 967836,928905,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758) 
-                            GROUP BY facturas_dat.fecha) AS t2,
-                            (SELECT facturas_dat.fecha, 
+                                GROUP BY facturas_dat.fecha) AS t2,
+                                (SELECT facturas_dat.fecha, 
                                 SUM(facturas_dat.cantidad - facturas_dat.devolucion) AS cantidad 
-                            FROM productos, 
+                                FROM productos, 
                                 facturas, 
                                 facturas_dat 
-                            WHERE facturas.documento = facturas_dat.documento 
+                                WHERE facturas.documento = facturas_dat.documento 
                                 AND facturas.credito = 0 
                                 AND productos.codprod = facturas_dat.codprod 
                                 AND (facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}') 
                                 AND productos.codprod NOT IN(969437,928905, 967836,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758) 
-                            GROUP BY facturas_dat.fecha) AS t3
-                        WHERE productos.codprod = facturas_dat.codprod
-                            AND facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
-                            AND facturas_dat.fecha = t1.fecha
-                            AND facturas_dat.fecha = t2.fecha
-                            AND facturas_dat.fecha = t3.fecha
-                            AND facturas_dat.fecha = historial_dolar.fecha
-                            AND facturas_dat.documento = facturas.documento
-                            AND facturas.credito = 0
-                            AND productos.codprod NOT IN(969437, 967836,928905,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758)
-                        GROUP BY facturas_dat.fecha, productos.tipoproducto'''
+                                GROUP BY facturas_dat.fecha) AS t3
+                            WHERE productos.codprod = facturas_dat.codprod
+                                AND facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
+                                AND facturas_dat.fecha = t1.fecha
+                                AND facturas_dat.fecha = t2.fecha
+                                AND facturas_dat.fecha = t3.fecha
+                                AND facturas_dat.fecha = historial_dolar.fecha
+                                AND facturas_dat.documento = facturas.documento
+                                AND facturas.credito = 0
+                                AND productos.codprod NOT IN(969437, 967836,928905,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758)
+                            GROUP BY facturas_dat.fecha, productos.tipoproducto) AS temp LEFT JOIN (SELECT
+                                facturas_dat.fecha AS Fecha,
+                                COUNT(DISTINCT(t1.doc)) AS Clientes,
+                                ROUND(SUM(devolucion)) AS Unidades_Devueltas,
+                                IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN (devolucion*facturas_dat.precio*1.16) ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*facturas_dat.precio) ELSE 0 END), 2), 0) AS Devolucion_Bs,
+                                IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN (devolucion*facturas_dat.precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*facturas_dat.precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS Devolucion_$,
+                                productos.tipoproducto AS Areas
+                            FROM
+                                facturas_dat,
+                                productos,
+                                historial_dolar,
+                                (SELECT documento AS doc FROM facturas_dat WHERE devolucion > 0 AND fecha BETWEEN '{date_init}' AND '{date_end}') AS t1
+                            WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
+                                AND productos.codprod = facturas_dat.codprod
+                                AND t1.doc = facturas_dat.documento
+                                AND historial_dolar.fecha = facturas_dat.fecha
+                            GROUP BY facturas_dat.fecha, productos.tipoproducto) AS temp2 ON temp.fecha = temp2.fecha AND temp.Area = temp2.Areas'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
     elif query == 'estadisticas de compras':
@@ -92,14 +119,24 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
 
     elif query == 'estadisticas por areas':
         sql_query = f'''SELECT
+                            temp.Fecha,
+                            CASE WHEN ISNULL(temp2.clientes) THEN temp.clientes ELSE (temp.clientes-temp2.clientes) END AS Clientes,
+                            CASE WHEN ISNULL(temp2.unidades_devueltas) THEN temp.Unidades ELSE (temp.unidades-temp2.unidades_devueltas) END AS Unidades,
+                            CASE WHEN ISNULL(temp2.devolucion_bs) THEN temp.ventas_bs ELSE (temp.ventas_bs-temp2.devolucion_bs) END AS 'Ventas Bs',
+                            CASE WHEN ISNULL(temp2.devolucion_$) THEN temp.ventas_bs ELSE (temp.ventas_$-temp2.devolucion_$) END AS 'Ventas $',
+                            temp.ticket_promedio AS 'Ticket Promedio',
+                            temp.UPT,
+                            temp.Areas
+                        FROM
+                        (SELECT
                             facturas_dat.fecha AS Fecha,
                             COUNT(DISTINCT(facturas_dat.documento)) AS Clientes,
                             ROUND(SUM(facturas_dat.cantidad - devolucion)) AS 'Unidades',
-                            ROUND(SUM(totalmasiva), 2) AS 'Ventas Bs',
-                            ROUND(SUM(totalmasiva / tasa_primera_actualizacion), 2) AS 'Ventas $',
-                            ROUND(SUM(totalmasiva / t1.cliente), 2) AS 'Ticket Promedio',
+                            ROUND(SUM(totalmasiva), 2) AS Ventas_Bs,
+                            ROUND(SUM(totalmasiva / tasa_primera_actualizacion), 2) AS Ventas_$,
+                            ROUND(SUM(totalmasiva / t1.cliente), 2) AS Ticket_Promedio,
                             ROUND(SUM((facturas_dat.cantidad - devolucion) / t1.cliente), 2) AS UPT,
-                            t1.areas As Areas
+                            t1.areas AS Areas
                         FROM
                             facturas_dat,
                             historial_dolar,
@@ -113,15 +150,42 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             AND facturas_dat.documento = facturas.documento
                             AND facturas.credito = 0
                             AND productos.codprod NOT IN(969437, 967836,928905,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758)
-                        GROUP BY facturas_dat.fecha, t1.areas'''
+                        GROUP BY facturas_dat.fecha, t1.areas) AS temp LEFT JOIN (SELECT
+                            facturas_dat.fecha AS Fecha,
+                            COUNT(DISTINCT(t1.doc)) AS Clientes,
+                            ROUND(SUM(devolucion)) AS Unidades_Devueltas,
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*precio ELSE 0 END), 2), 0) AS Devolucion_Bs,
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva>0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS Devolucion_$,
+                            CASE 
+                            WHEN facturas_dat.equipo IN ('Atencion-Preferencia', 'CAJA1-PC', 'CAJA_0102', 'CAJA_03', 'CAJA_07', 'CAJA_08', 'CAJA_09', 'CAJA_10') THEN 'AREA INTERNA' 
+                            WHEN facturas_dat.equipo IN ('FH-TAQ-01', 'FH-TAQ-02', 'FH-TAQ-03', 'FH-TAQ-04') THEN 'TAQUILLA EXPRESS' 
+                            WHEN facturas_dat.equipo IN ('MTAQ-01', 'MTAQ-02', 'MTAQ-03', 'MTAQ-04') THEN 'MOTO TAQUILLAS' ELSE 'OTROS' END AS Areas
+                        FROM
+                            facturas_dat,
+                            historial_dolar,
+                            (SELECT documento AS doc FROM facturas_dat WHERE devolucion > 0 AND fecha BETWEEN '{date_init}' AND '{date_end}') AS t1
+                        WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
+                            AND facturas_dat.fecha = historial_dolar.fecha
+                            AND facturas_dat.documento = t1.doc
+                        GROUP BY facturas_dat.fecha, 
+                            CASE WHEN facturas_dat.equipo IN ('Atencion-Preferencia', 'CAJA1-PC', 'CAJA_0102', 'CAJA_03', 'CAJA_07', 'CAJA_08', 'CAJA_09', 'CAJA_10') THEN 'AREA INTERNA' 
+                            WHEN facturas_dat.equipo IN ('FH-TAQ-01', 'FH-TAQ-02', 'FH-TAQ-03', 'FH-TAQ-04') THEN 'TAQUILLA EXPRESS' 
+                            WHEN facturas_dat.equipo IN ('MTAQ-01', 'MTAQ-02', 'MTAQ-03', 'MTAQ-04') THEN 'MOTO TAQUILLAS' ELSE 'OTROS' END) AS temp2 ON temp.fecha = temp2.fecha AND temp.Areas = temp2.Areas'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
     elif query == 'estadisticas por lineas':
-        sql_query = f'''SELECT
+        sql_query = f'''SELECT 
+                            temp.Fecha,
+                            CASE WHEN ISNULL(temp2.unidades_devueltas) THEN temp.unidades ELSE (temp.unidades-temp2.unidades_devueltas) END AS Unidades,
+                            CASE WHEN ISNULL(temp2.devolucion_bs) THEN temp.ventas_bs ELSE (temp.ventas_bs-temp2.devolucion_bs) END AS 'Ventas Bs',
+                            CASE WHEN ISNULL(temp2.devolucion_$) THEN temp.ventas_$ ELSE (temp.ventas_$-temp2.devolucion_$) END AS 'Ventas $',
+                            temp.Linea
+                        FROM
+                        (SELECT
                             facturas_dat.fecha AS Fecha,
                             ROUND(SUM(cantidad)) AS Unidades,
-                            ROUND(SUM(totalmasiva), 2) AS 'Ventas Bs',
-                            ROUND(SUM(totalmasiva)/tasa_primera_actualizacion, 2) AS 'Ventas $',
+                            ROUND(SUM(totalmasiva), 2) AS Ventas_Bs,
+                            ROUND(SUM(totalmasiva)/tasa_primera_actualizacion, 2) AS Ventas_$,
                             Linea
                         FROM
                             facturas_dat,
@@ -129,60 +193,18 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                         WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
                             AND facturas_dat.fecha = historial_dolar.fecha
                             AND codprod NOT IN(969437, 967836,928905,939572,940627,939573,939574,940769,948544,956358,963444,963440,963532,960510,963442,963620,963438,963616,963619,963617,963618,963437,963744,963434,963445,963446,963448,963950,963961,963963,963964,963965,964211,964456,964216,964504,964503,964217,964322,956262,960258,962082,962287,963321,963322,963869,964102,964112,964223,964229,964301,964303,964342,964356,963737,963615,963951,963962,964207,964740,964990,965099,965100,946779,963737,964558,965618,965620,965758)
-                        GROUP BY facturas_dat.fecha, linea'''
-        return transform_query_to_pd_df(sql_query, host, user, password, database)
-    
-    elif query == 'estadisticas de devoluciones tipo':
-        sql_query = f'''SELECT
+                        GROUP BY facturas_dat.fecha, linea) AS temp LEFT JOIN (SELECT
                             facturas_dat.fecha AS Fecha,
-                            ROUND(SUM(devolucion)) AS 'Unidades Devueltas',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*facturas_dat.precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*facturas_dat.precio ELSE 0 END), 2), 0) AS 'Monto Devolucion Bs',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN (devolucion*facturas_dat.precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*facturas_dat.precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS 'Monto Devolucion $',
-                            productos.tipoproducto AS Areas
-                        FROM
-                            facturas_dat,
-                            productos,
-                            historial_dolar
-                        WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
-                            AND productos.codprod = facturas_dat.codprod
-                            AND historial_dolar.fecha = facturas_dat.fecha
-                        GROUP BY facturas_dat.fecha, productos.tipoproducto'''
-        return transform_query_to_pd_df(sql_query, host, user, password, database)
-
-    elif query == 'estadisticas de devoluciones areas':
-        sql_query = f'''SELECT
-                            facturas_dat.fecha AS Fecha,
-                            ROUND(SUM(devolucion)) AS 'Unidades Devueltas',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*precio ELSE 0 END), 2), 0) AS 'Monto Devolucion Bs',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva>0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS 'Monto Devolucion $',
-                            CASE 
-                                WHEN facturas_dat.equipo IN ('Atencion-Preferencia', 'CAJA1-PC', 'CAJA_0102', 'CAJA_03', 'CAJA_07', 'CAJA_08', 'CAJA_09', 'CAJA_10') THEN 'AREA INTERNA' 
-                                WHEN facturas_dat.equipo IN ('FH-TAQ-01', 'FH-TAQ-02', 'FH-TAQ-03', 'FH-TAQ-04') THEN 'TAQUILLA EXPRESS' 
-                                WHEN facturas_dat.equipo IN ('MTAQ-01', 'MTAQ-02', 'MTAQ-03', 'MTAQ-04') THEN 'MOTO TAQUILLAS' ELSE 'OTROS' END AS Areas
-                        FROM
-                            facturas_dat,
-                            historial_dolar
-                        WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
-                            AND facturas_dat.fecha = historial_dolar.fecha
-                        GROUP BY facturas_dat.fecha, 
-                            CASE WHEN facturas_dat.equipo IN ('Atencion-Preferencia', 'CAJA1-PC', 'CAJA_0102', 'CAJA_03', 'CAJA_07', 'CAJA_08', 'CAJA_09', 'CAJA_10') THEN 'AREA INTERNA' 
-                                WHEN facturas_dat.equipo IN ('FH-TAQ-01', 'FH-TAQ-02', 'FH-TAQ-03', 'FH-TAQ-04') THEN 'TAQUILLA EXPRESS' 
-                                WHEN facturas_dat.equipo IN ('MTAQ-01', 'MTAQ-02', 'MTAQ-03', 'MTAQ-04') THEN 'MOTO TAQUILLAS' ELSE 'OTROS' END'''
-        return transform_query_to_pd_df(sql_query, host, user, password, database)
-    
-    elif query == 'estadisticas de devoluciones lineas':
-        sql_query = f'''SELECT
-                            facturas_dat.fecha AS Fecha,
-                            ROUND(SUM(devolucion)) AS 'Unidades Devueltas',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*precio ELSE 0 END), 2), 0) AS 'Monto Devolucion Bs',
-                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva>0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS 'Monto Devolucion $',
+                            ROUND(SUM(devolucion)) AS Unidades_Devueltas,
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva > 0 THEN devolucion*precio*1.16 ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN devolucion*precio ELSE 0 END), 2), 0) AS Devolucion_Bs,
+                            IF(SUM(devolucion) > 0, ROUND(SUM(CASE WHEN poriva>0 THEN (devolucion*precio*1.16)/tasa_primera_actualizacion ELSE 0 END) +  SUM(CASE WHEN poriva = 0 THEN (devolucion*precio)/tasa_primera_actualizacion ELSE 0 END), 2), 0) AS Devolucion_$,
                             Linea
                         FROM
                             facturas_dat,
                             historial_dolar
-                        WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}' 
+                        WHERE facturas_dat.fecha BETWEEN '{date_init}' AND '{date_end}'
                             AND facturas_dat.fecha = historial_dolar.fecha
-                        GROUP BY facturas_dat.fecha, linea'''
+                        GROUP BY facturas_dat.fecha, linea) AS temp2 ON temp.fecha = temp2.fecha AND temp.linea = temp2.linea'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
     
     elif query == 'estadisticas productos con mayor utilidad':
@@ -306,7 +328,7 @@ def get_data(query, date_init='CURDATE()', date_end='CURDATE()', host='10.0.2.1'
                             FROM mov_pagos 
                         WHERE fecha BETWEEN '{date_init}' AND '{date_end}' 
                         AND tipo = 'EFECTIVO' 
-                        AND codtipomoneda = 3 
+                        AND codtipomoneda = {codtipomoneda} 
                         GROUP BY fecha'''
         return transform_query_to_pd_df(sql_query, host, user, password, database)
 

@@ -29,7 +29,7 @@ with open('style.css')as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html = True)
 
 conexiones = consultas.get_data('Conexiones')
-conexiones = conexiones[conexiones['grupo'] == 'SNFDO']
+conexiones = conexiones[conexiones['grupo'] != 'OTROS']
 farmacias = [nombre for nombre in conexiones['nombre']]
 
 c1, c2, c3, c4 = st.columns(4)
